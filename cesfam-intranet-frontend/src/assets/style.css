@@ -1,0 +1,28 @@
+:root {
+  --color-azul-institucional: #0B74DE;
+  --color-verde-salud: #0FA3A3;
+  --color-fondo: #F3F4F6;
+  --color-tarjeta: #FFFFFF;
+  --color-borde: #E5E7EB;
+  --color-texto-principal: #1F2937;
+  --color-texto-secundario: #6B7280;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Roboto', sans-serif;
+  background-color: var(--color-fondo);
+  color: var(--color-texto-principal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+}

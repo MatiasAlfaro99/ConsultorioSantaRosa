@@ -1,0 +1,4 @@
+Dirección	admin@cesfam.cl	password123	Login inicial, Aprobación final, Gestión total.
+Jefatura	jefe@prueba.cl	password123	Aprobar solicitudes, Ver botones de Subida.
+Funcionario	juan@cesfam.cl	password123	Crear solicitudes, Acceso básico (simula un empleado estándar).
+Jefatura (Alt)	jefa@cesfam.cl	password123	Rol de prueba alternativo (usado para la creación de 'juan').
