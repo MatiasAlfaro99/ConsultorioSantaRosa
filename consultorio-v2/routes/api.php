@@ -18,7 +18,7 @@ use App\Http\Controllers\Api\V1\AdminUserController;
 use App\Http\Controllers\Api\V1\ExternalNewsController;
 use App\Http\Controllers\Api\V1\SugerenciaController; // Asumo que ya lo creaste
 use App\Http\Controllers\Api\V1\ProfileController;
-
+use App\Http\Controllers\Api\V1\DashboardController;
 // =========================================================================
 // RUTAS PÚBLICAS (v1)
 // =========================================================================
@@ -30,7 +30,7 @@ Route::prefix('v1')->group(function () {
 // RUTAS PROTEGIDAS (v1, Requieren Token Bearer)
 // =========================================================================
 Route::middleware('auth:sanctum')->prefix('v1')->group(function () {
-
+    Route::get('/dashboard/resumen', [DashboardController::class, 'obtenerResumen']);
     // --- PERFIL Y UTILIDADES ---
     Route::get('/user', function (Request $request) {
         return $request->user();

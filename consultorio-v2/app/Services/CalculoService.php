@@ -2,40 +2,44 @@
 
 namespace App\Services;
 
-use Carbon\Carbon;
+use App\Models\Solicitud;
+use App\Models\User;
 
 class CalculoService
 {
     /**
-     * Cuenta días hábiles entre dos fechas inclusive.
-     * Solo cuenta días con dayOfWeek 1..5 (Lunes-Viernes).
-     * Sábado siempre inhábil por regla.
-     *
-     * @param Carbon|string $fecha_inicio
-     * @param Carbon|string $fecha_fin
-     * @return int
+     * Calcula los días disponibles de Vacaciones y Administrativos
      */
-    public function calcularDiasHabiles($fecha_inicio, $fecha_fin): int
+    public function calcularSaldos(User $user)
     {
-        $inicio = $fecha_inicio instanceof Carbon ? $fecha_inicio->copy() : new Carbon($fecha_inicio);
-        $fin = $fecha_fin instanceof Carbon ? $fecha_fin->copy() : new Carbon($fecha_fin);
+        // 1. Definir los Totales Legales
+        // (Aquí podrías poner lógica extra si el usuario tiene más años de antigüedad)
+        $totalVacaciones = 15;
+        $totalAdministrativos = 6;
 
-        if ($fin->lessThan($inicio)) {
-            return 0;
-        }
+        // 2. Sumar días YA usados (Solo solicitudes APROBADAS totalmente)
+        $usadosVacaciones = Solicitud::where('user_id', $user->id)
+            ->where('tipo', 'vacaciones')
+            ->where('estado', 'aprobado') // Solo las que aprobó el Director
+            ->sum('dias_solicitados');
 
-        $diasHabiles = 0;
-        $current = $inicio->copy();
-        while ($current->lessThanOrEqualTo($fin)) {
-            // Carbon::dayOfWeek: 0 (Sunday) .. 6 (Saturday)
-            $dow = (int) $current->dayOfWeek;
-            // Monday=1 .. Friday=5
-            if ($dow >= Carbon::MONDAY && $dow <= Carbon::FRIDAY) {
-                $diasHabiles++;
-            }
-            $current->addDay();
-        }
+        $usadosAdmin = Solicitud::where('user_id', $user->id)
+            ->where('tipo', 'administrativo')
+            ->where('estado', 'aprobado')
+            ->sum('dias_solicitados');
 
-        return $diasHabiles;
+        // 3. Calcular Restantes
+        return [
+            'vacaciones' => [
+                'total' => $totalVacaciones,
+                'usados' => $usadosVacaciones,
+                'disponibles' => max(0, $totalVacaciones - $usadosVacaciones),
+            ],
+            'administrativos' => [
+                'total' => $totalAdministrativos,
+                'usados' => $usadosAdmin,
+                'disponibles' => max(0, $totalAdministrativos - $usadosAdmin),
+            ]
+        ];
     }
 }

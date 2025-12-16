@@ -72,7 +72,7 @@ const cargando = ref(true)
 const mostrarModal = ref(false)
 const documentoSeleccionado = ref(null)
 
-const rolesPermitidos = ['admin','direccion', 'subdireccion', 'jefatura']
+const rolesPermitidos = ['admin','direccion', 'director','subdireccion', 'jefatura']
 const puedeSubirDocumentos = computed(() => authStore.usuario && rolesPermitidos.includes(authStore.usuario.role))
 
 const documentosFiltrados = computed(() => {

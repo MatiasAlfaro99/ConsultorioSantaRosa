@@ -70,16 +70,14 @@
 import { reactive, ref, onMounted, watch } from 'vue'
 import apiClient from '@/api/axios.js'
 
-// Agregamos 'eventoEditar' a los props
 const props = defineProps(['mostrar', 'preseleccionFecha', 'eventoEditar'])
-// Agregamos el evento 'eliminar'
 const emit = defineEmits(['cerrar', 'guardado', 'eliminar'])
 
 const guardando = ref(false)
 const errores = ref([])
 
 const form = reactive({
-  id: null, // Importante para saber si es edición
+  id: null,
   titulo: '',
   categoria: 'reunion',
   fecha_inicio: '',
@@ -98,7 +96,6 @@ watch(() => props.mostrar, (val) => {
 const resetForm = () => {
     errores.value = []
     
-    // CASO 1: MODO EDICIÓN (Viene un evento en los props)
     if (props.eventoEditar) {
         const ev = props.eventoEditar
         
@@ -107,23 +104,31 @@ const resetForm = () => {
         form.descripcion = ev.descripcion || ''
         form.categoria = ev.categoria || 'reunion'
 
-        // Extraer Fecha y Hora del string ISO (ej: 2025-10-10T09:30:00)
-        // Usamos split para asegurar compatibilidad simple
         if (ev.fecha_inicio) {
             const fechaObj = new Date(ev.fecha_inicio)
-            // Fecha formato YYYY-MM-DD
-            form.fecha_inicio = fechaObj.toISOString().split('T')[0]
-            // Hora formato HH:mm
-            form.hora_inicio = fechaObj.toTimeString().slice(0, 5)
+            // Ajustamos para obtener la fecha local correctamente
+            const year = fechaObj.getFullYear()
+            const month = String(fechaObj.getMonth() + 1).padStart(2, '0')
+            const day = String(fechaObj.getDate()).padStart(2, '0')
+            form.fecha_inicio = `${year}-${month}-${day}`
+            
+            // Hora formato HH:mm local
+            const hours = String(fechaObj.getHours()).padStart(2, '0')
+            const minutes = String(fechaObj.getMinutes()).padStart(2, '0')
+            form.hora_inicio = `${hours}:${minutes}`
         }
     
-    // CASO 2: MODO CREACIÓN
     } else {
         form.id = null
         if (props.preseleccionFecha) {
             form.fecha_inicio = props.preseleccionFecha
         } else {
-            form.fecha_inicio = new Date().toISOString().split('T')[0]
+            // Fecha local actual YYYY-MM-DD
+            const hoy = new Date()
+            const year = hoy.getFullYear()
+            const month = String(hoy.getMonth() + 1).padStart(2, '0')
+            const day = String(hoy.getDate()).padStart(2, '0')
+            form.fecha_inicio = `${year}-${month}-${day}`
         }
         form.titulo = ''
         form.descripcion = ''
@@ -137,40 +142,48 @@ const cerrar = () => {
 }
 
 const emitirEliminar = () => {
-    // Emitimos al padre para que él se encargue de la confirmación y llamada API
-    // Le pasamos el ID del evento actual
     emit('eliminar', form.id)
 }
 
+// ESTA ES LA PARTE QUE CAMBIÉ PARA ARREGLAR LA HORA
 const guardar = async () => {
   guardando.value = true
   errores.value = []
 
   try {
-    // 1. Construir fechas
-    const fechaStartStr = `${form.fecha_inicio}T${form.hora_inicio}:00`
-    const fechaStart = new Date(fechaStartStr)
-    const fechaEnd = new Date(fechaStart)
-    fechaEnd.setHours(fechaEnd.getHours() + 1) // Duración default 1 hora
+    // Construimos la fecha combinada manualmente para no perder la zona horaria
+    const fechaCombinadaStr = `${form.fecha_inicio} ${form.hora_inicio}:00`
+    // Creamos objeto Date solo para calcular la hora de fin
+    const fechaStartObj = new Date(form.fecha_inicio + 'T' + form.hora_inicio + ':00')
+    const fechaEndObj = new Date(fechaStartObj)
+    fechaEndObj.setHours(fechaEndObj.getHours() + 1) // +1 hora
 
-    const format = (d) => d.toISOString().slice(0, 19).replace('T', ' ')
+    // Función auxiliar para formatear a YYYY-MM-DD HH:mm:ss LOCAL
+    const formatLocal = (date) => {
+        const pad = (n) => n < 10 ? '0' + n : n;
+        return date.getFullYear() + '-' +
+            pad(date.getMonth() + 1) + '-' +
+            pad(date.getDate()) + ' ' +
+            pad(date.getHours()) + ':' +
+            pad(date.getMinutes()) + ':' +
+            pad(date.getSeconds());
+    }
 
     const payload = {
       titulo: form.titulo,
       categoria: form.categoria,
       descripcion: form.descripcion,
-      fecha_inicio: format(fechaStart), 
-      fecha_fin: format(fechaEnd), 
+      // Enviamos el string directo tal cual lo escribió el usuario
+      fecha_inicio: fechaCombinadaStr, 
+      // Calculamos el fin manteniendo el formato local
+      fecha_fin: formatLocal(fechaEndObj), 
       lugar: 'CESFAM' 
     }
     
-    // 2. Decidir si es PUT (Actualizar) o POST (Crear)
     if (form.id) {
-        // ACTUALIZAR
         await apiClient.put(`/eventos/${form.id}`, payload)
         alert('Evento actualizado correctamente')
     } else {
-        // CREAR
         await apiClient.post('/eventos', payload)
         alert('Evento creado exitosamente')
     }
@@ -193,6 +206,7 @@ const guardar = async () => {
 </script>
 
 <style scoped>
+/* Tus estilos se mantienen igual */
 .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 1000; }
 .modal-content { background: white; padding: 2rem; border-radius: 12px; width: 90%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
 .modal-header { display: flex; justify-content: space-between; margin-bottom: 1.5rem; align-items: center; }
@@ -204,17 +218,12 @@ const guardar = async () => {
 .fila-doble .campo { flex: 1; }
 .campo label { font-weight: 600; font-size: 0.85rem; color: #374151; }
 .input-form { padding: 0.6rem; border: 1px solid #D1D5DB; border-radius: 6px; font-family: inherit; font-size: 0.95rem; }
-
-/* Footer ajustado */
 .modal-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; }
 .acciones-derecha { display: flex; gap: 1rem; margin-left: auto; }
-
-/* Botones */
 .btn-cancelar { background: white; border: 1px solid #D1D5DB; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; }
 .boton-guardar { background: #0B74DE; color: white; border: none; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
 .btn-eliminar { background: #fee2e2; color: #dc2626; border: 1px solid #fecaca; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer; font-weight: 600; }
 .btn-eliminar:hover { background: #fecaca; }
-
 .alerta-error { background-color: #FEE2E2; color: #B91C1C; padding: 0.75rem; border-radius: 6px; font-size: 0.85rem; }
 .alerta-error ul { margin: 0; padding-left: 1.2rem; }
 </style>

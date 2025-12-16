@@ -11,7 +11,6 @@
       </router-link>
     </div>
 
-    <!-- PESTAÑAS -->
     <div class="tabs-container">
       <button 
         class="tab-btn" 
@@ -20,12 +19,12 @@
       >
         Mis Solicitudes
       </button>
-  <button 
-      v-if="puedeGestionar"
-      class="tab-btn" 
-      :class="{ 'activo': tabActiva === 'por_aprobar' }" 
-      @click="tabActiva = 'por_aprobar'"
-  >
+      <button 
+        v-if="puedeGestionar"
+        class="tab-btn" 
+        :class="{ 'activo': tabActiva === 'por_aprobar' }" 
+        @click="tabActiva = 'por_aprobar'"
+      >
         Gestión de Equipo
         <span v-if="conteoPendientes > 0" class="badge-conteo">{{ conteoPendientes }}</span>
       </button>
@@ -49,8 +48,8 @@
               <th>Funcionario</th>
               <th>Tipo</th>
               <th>Fechas / Horas</th>
-              <th>Estado</th>
-              <th v-if="tabActiva === 'por_aprobar'">Acciones</th>
+              <th>Estado Actual</th>
+              <th v-if="tabActiva === 'por_aprobar'">Seguimiento / Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -84,25 +83,33 @@
                   {{ formatearEstado(solicitud.estado) }}
                 </span>
               </td>
+              
               <td v-if="tabActiva === 'por_aprobar'">
+                
                 <div v-if="puedeAprobar(solicitud)" class="acciones-jefe">
-                  <button 
-                    @click="aprobar(solicitud.id, solicitud.estado)" 
-                    class="btn-icon btn-aprobar" 
-                    title="Aprobar"
-                  >
+                  <button @click="aprobar(solicitud.id, solicitud.estado)" class="btn-icon btn-aprobar" title="Aprobar">
                     <CheckCircleIcon />
                   </button>
-                  <button 
-                    @click="rechazar(solicitud.id)" 
-                    class="btn-icon btn-rechazar" 
-                    title="Rechazar"
-                  >
+                  <button @click="rechazar(solicitud.id)" class="btn-icon btn-rechazar" title="Rechazar">
                     <XCircleIcon />
                   </button>
                 </div>
+
+                <span v-else-if="estaEnDireccion(solicitud)" class="badge-espera">
+                   <ClockIcon class="icono-mini-espera" /> En Dirección
+                </span>
+
+                <span v-else-if="solicitud.estado === 'aprobado'" class="badge-info-green">
+                   <CheckCircleIcon class="icono-mini-espera" /> Finalizado
+                </span>
+
+                 <span v-else-if="solicitud.estado === 'rechazado'" class="badge-info-red">
+                   Rechazado
+                </span>
+
                 <span v-else class="texto-gris">-</span>
               </td>
+
               <td v-else>
                  <button 
                     v-if="solicitud.estado === 'aprobado'"
@@ -118,7 +125,6 @@
           </tbody>
         </table>
 
-        <!-- VISTA MOVIL -->
         <div class="lista-movil mobile-only">
           <div v-for="solicitud in solicitudesFiltradas" :key="solicitud.id" class="tarjeta-solicitud">
             <div class="tarjeta-header">
@@ -145,12 +151,21 @@
                 </span>
               </div>
               
-              <div v-if="tabActiva === 'por_aprobar' && puedeAprobar(solicitud)" class="acciones-movil">
-                <button @click="aprobar(solicitud.id, solicitud.estado)" class="btn-movil aprobar">Aprobar</button>
-                <button @click="rechazar(solicitud.id)" class="btn-movil rechazar">Rechazar</button>
+              <div v-if="tabActiva === 'por_aprobar'" class="contenedor-acciones-movil">
+                 <div v-if="puedeAprobar(solicitud)" class="acciones-movil">
+                    <button @click="aprobar(solicitud.id, solicitud.estado)" class="btn-movil aprobar">Aprobar</button>
+                    <button @click="rechazar(solicitud.id)" class="btn-movil rechazar">Rechazar</button>
+                 </div>
+                 <div v-else-if="estaEnDireccion(solicitud)">
+                    <span class="badge-espera movil-espera">
+                       <ClockIcon class="icono-mini-espera" /> Pendiente Dirección
+                    </span>
+                 </div>
+                 <div v-else-if="solicitud.estado === 'aprobado'">
+                    <span class="badge-info-green movil-espera">Finalizado</span>
+                 </div>
               </div>
 
-              <!-- Botón Descarga Móvil -->
               <div v-if="solicitud.estado === 'aprobado'" class="acciones-movil-pdf">
                  <button @click="descargarPDF(solicitud.id)" class="btn-movil pdf-btn">
                     <DocumentArrowDownIcon class="icono-btn-movil"/> Descargar Comprobante
@@ -167,14 +182,22 @@
 
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { PlusIcon, InboxIcon, CalendarIcon, CheckCircleIcon, XCircleIcon, DocumentArrowDownIcon } from '@heroicons/vue/24/outline'
+import { 
+  PlusIcon, 
+  InboxIcon, 
+  CalendarIcon, 
+  CheckCircleIcon, 
+  XCircleIcon, 
+  DocumentArrowDownIcon,
+  ClockIcon
+} from '@heroicons/vue/24/outline'
 import apiClient from '@/api/axios.js'
 import { useAuthStore } from '@/store/auth.js'
 
 const authStore = useAuthStore()
 const solicitudes = ref([])
 const cargando = ref(true)
-const tabActiva = ref('mis_solicitudes') // 'mis_solicitudes' | 'por_aprobar'
+const tabActiva = ref('mis_solicitudes') 
 
 const cargarSolicitudes = async () => {
   cargando.value = true
@@ -188,8 +211,7 @@ const cargarSolicitudes = async () => {
   }
 }
 
-// --- COMPUTED PROPERTIES ---
-
+// --- COMPUTED ---
 const puedeGestionar = computed(() => {
   return authStore.esJefatura || authStore.esSubdireccion || authStore.esDirector
 })
@@ -198,8 +220,7 @@ const solicitudesFiltradas = computed(() => {
   if (tabActiva.value === 'mis_solicitudes') {
     return solicitudes.value.filter(s => esMia(s))
   } else {
-    // Mostrar solicitudes que NO son mías (o todas si quiero ver las mías también en gestión, pero mejor separar)
-    // Y que sean relevantes para mi rol (aunque el backend ya debería filtrar, aquí filtramos visualmente)
+    // Aquí mostramos TODAS las del equipo, para que no desaparezcan al cambiar de estado
     return solicitudes.value.filter(s => !esMia(s))
   }
 })
@@ -209,31 +230,31 @@ const conteoPendientes = computed(() => {
 })
 
 // --- LÓGICA DE PERMISOS ---
-
 const esMia = (solicitud) => {
   return solicitud.user_id === authStore.usuario.id
 }
 
 const puedeAprobar = (solicitud) => {
-  const rol = authStore.usuario.role
   const estado = solicitud.estado
-
+  // Definimos cuándo es MI turno
   if (authStore.esJefatura && estado === 'pendiente_jefatura') return true
-  // Subdirección solo ve, no aprueba
   if (authStore.esDirector && estado === 'pendiente_direccion') return true
-  
+  return false
+}
+
+// Lógica para mostrar "Esperando Dirección"
+const estaEnDireccion = (solicitud) => {
+  // Si soy Jefe y el estado es pendiente_direccion, significa que ya pasó por mí
+  if (authStore.esJefatura && solicitud.estado === 'pendiente_direccion') return true
   return false
 }
 
 // --- ACCIONES ---
-
 const descargarPDF = async (id) => {
   try {
     const response = await apiClient.get(`/solicitudes/${id}/descargar`, {
-      responseType: 'blob' // Importante para manejar archivos binarios
+      responseType: 'blob' 
     })
-    
-    // Crear una URL para el blob
     const url = window.URL.createObjectURL(new Blob([response.data]))
     const link = document.createElement('a')
     link.href = url
@@ -283,12 +304,9 @@ const rechazar = async (id) => {
 }
 
 // --- FORMATO ---
-
 const formatearFecha = (fechaRaw) => {
   if (!fechaRaw) return '-'
-  // Manejo simple de fechas ISO
   const date = new Date(fechaRaw)
-  // Ajuste zona horaria si es necesario, o usar UTC
   return date.toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: 'numeric' })
 }
 
@@ -344,38 +362,14 @@ onMounted(cargarSolicitudes)
 .icono-btn { width: 20px; height: 20px; }
 
 /* TABS */
-.tabs-container {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  border-bottom: 1px solid var(--color-borde);
-}
+.tabs-container { display: flex; gap: 1rem; margin-bottom: 1.5rem; border-bottom: 1px solid var(--color-borde); }
 .tab-btn {
-  background: none;
-  border: none;
-  padding: 0.75rem 1rem;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--color-texto-secundario);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  background: none; border: none; padding: 0.75rem 1rem; font-size: 0.95rem; font-weight: 500;
+  color: var(--color-texto-secundario); cursor: pointer; border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 0.5rem;
 }
 .tab-btn:hover { color: var(--color-azul-institucional); }
-.tab-btn.activo {
-  color: var(--color-azul-institucional);
-  border-bottom-color: var(--color-azul-institucional);
-  font-weight: 600;
-}
-.badge-conteo {
-  background-color: #EF4444;
-  color: white;
-  font-size: 0.7rem;
-  padding: 2px 6px;
-  border-radius: 10px;
-}
+.tab-btn.activo { color: var(--color-azul-institucional); border-bottom-color: var(--color-azul-institucional); font-weight: 600; }
+.badge-conteo { background-color: #EF4444; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 10px; }
 
 /* TABLA */
 .tabla-solicitudes { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; border: 1px solid var(--color-borde); }
@@ -383,23 +377,8 @@ onMounted(cargarSolicitudes)
 .tabla-solicitudes td { padding: 1rem; border-bottom: 1px solid var(--color-borde); color: var(--color-texto-principal); }
 
 /* ESTADO VACIO */
-.estado-vacio {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 3rem;
-  background-color: white;
-  border-radius: 12px;
-  border: 1px dashed var(--color-borde);
-  color: var(--color-texto-secundario);
-  gap: 1rem;
-}
-.icono-vacio {
-  width: 64px;
-  height: 64px;
-  stroke: #D1D5DB;
-}
+.estado-vacio { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 3rem; background-color: white; border-radius: 12px; border: 1px dashed var(--color-borde); color: var(--color-texto-secundario); gap: 1rem; }
+.icono-vacio { width: 64px; height: 64px; stroke: #D1D5DB; }
 
 .info-funcionario { display: flex; flex-direction: column; }
 .nombre-func { font-weight: 600; }
@@ -413,7 +392,7 @@ onMounted(cargarSolicitudes)
 .badge-danger { background-color: #FEF2F2; color: #B91C1C; border: 1px solid #FECACA; }
 .badge-gray { background-color: #F3F4F6; color: #4B5563; }
 
-/* Botones de Acción */
+/* Botones y Etiquetas de Estado */
 .acciones-jefe { display: flex; gap: 0.5rem; }
 .btn-icon { background: none; border: none; cursor: pointer; padding: 4px; transition: transform 0.1s; }
 .btn-icon:hover { transform: scale(1.1); }
@@ -421,6 +400,12 @@ onMounted(cargarSolicitudes)
 .btn-aprobar { color: #16A34A; }
 .btn-rechazar { color: #DC2626; }
 .btn-pdf { color: #2563EB; }
+
+/* Nuevos Badges */
+.badge-espera { display: flex; align-items: center; gap: 4px; color: #D97706; font-size: 0.75rem; font-weight: 600; background: #FEF3C7; padding: 4px 8px; border-radius: 12px; }
+.badge-info-green { display: flex; align-items: center; gap: 4px; color: #15803D; font-size: 0.75rem; font-weight: 600; background: #DCFCE7; padding: 4px 8px; border-radius: 12px; }
+.badge-info-red { display: flex; align-items: center; gap: 4px; color: #B91C1C; font-size: 0.75rem; font-weight: 600; background: #FEE2E2; padding: 4px 8px; border-radius: 12px; }
+.icono-mini-espera { width: 14px; height: 14px; }
 
 /* Mobile */
 .mobile-only { display: none; }
@@ -434,6 +419,7 @@ onMounted(cargarSolicitudes)
   .aprobar { background-color: #DCFCE7; color: #16A34A; }
   .rechazar { background-color: #FEE2E2; color: #DC2626; }
   .pdf-btn { background-color: #DBEAFE; color: #2563EB; }
+  .movil-espera { justify-content: center; width: 100%; margin-top: 0.5rem; }
   .icono-btn-movil { width: 20px; height: 20px; }
 }
 </style>

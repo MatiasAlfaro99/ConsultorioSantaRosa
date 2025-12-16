@@ -34,15 +34,17 @@ import { useAuthStore } from '@/store/auth.js'
 import ModalEvento from '@/components/calendario/ModalEvento.vue'
 
 const authStore = useAuthStore()
-const fullCalendarRef = ref(null) // Referencia al calendario por si necesitamos API interna
+const fullCalendarRef = ref(null) 
 const mostrarModal = ref(false)
 const fechaSeleccionada = ref('')
-const eventoSeleccionado = ref(null) // Variable para guardar el evento a editar
+const eventoSeleccionado = ref(null) 
 const eventos = ref([])
 
+// --- LÓGICA DE PERMISOS ACTUALIZADA ---
 const puedeCrear = computed(() => {
-  const rol = authStore.usuario?.role
-  return ['direccion', 'jefatura', 'subdireccion', 'admin'].includes(rol)
+  // Ahora usamos el getter robusto del store que incluye 'direccion', 'admin', 'subdireccion'.
+  // Agregamos 'esJefatura' explícitamente por si el getter total no lo incluía.
+  return authStore.tienePermisoTotal || authStore.esJefatura
 })
 
 // --- MÉTODOS DE APERTURA ---
@@ -66,8 +68,9 @@ function abrirModalManual() {
 // Clic en un evento existente (Editar)
 function handleEventClick(info) {
   if (!puedeCrear.value) {
-    // Si no tiene permisos, solo mostramos info básica o nada
-    alert(`Evento: ${info.event.title}`)
+    // Si no tiene permisos, solo mostramos info básica (solo lectura)
+    // Podrías abrir un modal de "Ver Detalle" aquí si quisieras en el futuro
+    alert(`Evento: ${info.event.title}\n${info.event.extendedProps.descripcion || ''}`)
     return
   }
 
@@ -75,7 +78,7 @@ function handleEventClick(info) {
   eventoSeleccionado.value = {
     id: info.event.id,
     titulo: info.event.title,
-    fecha_inicio: info.event.startStr, // FullCalendar ya maneja ISO strings
+    fecha_inicio: info.event.startStr, 
     fecha_fin: info.event.endStr,
     // Recuperamos los datos extra que guardamos en extendedProps
     descripcion: info.event.extendedProps.descripcion,
@@ -89,7 +92,7 @@ function handleEventClick(info) {
 
 function cerrarModal() {
   mostrarModal.value = false
-  eventoSeleccionado.value = null // Limpiar al cerrar
+  eventoSeleccionado.value = null 
 }
 
 // --- LOGICA API ---
@@ -99,7 +102,6 @@ const recargarEventos = () => {
   cargarEventosDesdeAPI()
 }
 
-// Función para eliminar llamada desde el Modal (si implementas el botón allá)
 const eliminarDesdeModal = async (idEvento) => {
     if(!confirm("¿Estás seguro de eliminar este evento permanentemente?")) return;
 
@@ -107,6 +109,7 @@ const eliminarDesdeModal = async (idEvento) => {
         await apiClient.delete(`/eventos/${idEvento}`)
         mostrarModal.value = false
         cargarEventosDesdeAPI() // Recargar calendario
+        alert("Evento eliminado correctamente")
     } catch (error) {
         console.error("Error eliminando:", error)
         alert("Hubo un error al eliminar el evento.")
@@ -116,6 +119,7 @@ const eliminarDesdeModal = async (idEvento) => {
 const cargarEventosDesdeAPI = async () => {
   try {
     const respuesta = await apiClient.get('/eventos')
+    // Ajuste por si el backend devuelve { data: [...] } o directo [...]
     const datosRaw = respuesta.data.data || respuesta.data || []
 
     const eventosFormateados = datosRaw.map(ev => {
@@ -126,17 +130,17 @@ const cargarEventosDesdeAPI = async () => {
             title: ev.titulo, 
             start: ev.fecha_inicio, 
             end: ev.fecha_fin, 
-            color: obtenerColor(ev.categoria), // Asigna color visualmente
-            // Guardamos todo lo necesario para editar en extendedProps
+            color: obtenerColor(ev.categoria), 
             extendedProps: {
                 descripcion: ev.descripcion,
                 lugar: ev.lugar,
-                categoria: ev.categoria // Importante para recuperar el color/tipo al editar
+                categoria: ev.categoria 
             }
         }
     }).filter(e => e !== null)
     
     eventos.value = eventosFormateados
+    // Actualizamos las opciones del calendario reactivamente
     calendarOptions.events = eventosFormateados
 
   } catch (error) {
@@ -162,10 +166,11 @@ const calendarOptions = reactive({
     center: 'title',
     right: 'dayGridMonth'
   },
+  // Asignamos la referencia reactiva de eventos
   events: eventos, 
   dateClick: handleDateClick,
-  eventClick: handleEventClick, // Ahora llama a la función de edición
-  editable: false, // Dejar false para que no arrastren eventos sin querer (mejor editar por modal)
+  eventClick: handleEventClick, 
+  editable: false, // Arrastrar desactivado para evitar ediciones accidentales sin modal
   height: 'auto',
   selectable: true
 })
@@ -177,8 +182,10 @@ onMounted(cargarEventosDesdeAPI)
 .pagina-calendario { max-width: 1200px; margin: 0 auto; padding-bottom: 3rem; }
 .encabezado-cal { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
 .titulo-pagina { font-size: 1.8rem; font-weight: 700; color: #1F2937; }
-.btn-nuevo { background-color: #0B74DE; color: white; border: none; padding: 0.7rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; }
+.btn-nuevo { background-color: #0B74DE; color: white; border: none; padding: 0.7rem 1.2rem; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+.btn-nuevo:hover { background-color: #095cb3; }
 .calendario-contenedor { background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #E5E7EB; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
 :deep(.fc-toolbar-title) { font-size: 1.5rem; text-transform: capitalize; }
 :deep(.fc-button-primary) { background-color: #0B74DE; border-color: #0B74DE; }
+:deep(.fc-event) { cursor: pointer; }
 </style>

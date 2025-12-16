@@ -2,28 +2,32 @@
 
 namespace App\Services;
 
-use App\DTOs\ComunicadoData;
 use App\Models\Comunicado;
 
 class ComunicadoService
 {
-    // RF3: Publicar comunicados
-    public function publicar(ComunicadoData $data): Comunicado
+    public function listarVigentes()
+    {
+        // Traemos todos, ordenados por fecha
+        return Comunicado::with('autor')
+            ->orderBy('created_at', 'desc')
+            ->get();
+    }
+
+    public function publicar(array $datos)
     {
         return Comunicado::create([
-            'titulo' => $data->titulo,
-            'contenido' => $data->contenido,
-            'publicado_por_id' => $data->publicadoPorId,
-            'es_activo' => true
+            'titulo' => $datos['titulo'],
+            'contenido' => $datos['contenido'],
+            'es_importante' => $datos['es_importante'] ?? false,
+            'user_id' => $datos['publicado_por_id'],
+            'fecha_publicacion' => now(),
         ]);
     }
 
-    // RF3: Visualizar comunicados vigentes
-    public function listarVigentes()
+    public function eliminar($id)
     {
-        return Comunicado::with(['autor:id,name,cargo', 'evento'])
-            ->where('es_activo', true)
-            ->latest()
-            ->get();
+        $comunicado = Comunicado::findOrFail($id);
+        $comunicado->delete();
     }
 }

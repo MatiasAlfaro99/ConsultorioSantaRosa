@@ -151,7 +151,7 @@ const formulario = reactive({
 // Permisos
 const esAdmin = computed(() => {
   const rol = authStore.usuario?.role
-  return ['direccion', 'jefatura', 'admin'].includes(rol)
+  return ['direccion', 'director','jefatura', 'admin'].includes(rol)
 })
 
 // --- Cargar Datos ---

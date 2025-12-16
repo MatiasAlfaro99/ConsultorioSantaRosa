@@ -47,8 +47,6 @@
         </li>
       </router-link>
 
-
-
       <router-link to="/licencias" class="item-menu-link">
         <li class="item-menu">
           <ClipboardDocumentCheckIcon class="icono-menu" />
@@ -60,6 +58,10 @@
 </template>
 
 <script setup>
+// --- IMPORTACIÓN QUE FALTABA ---
+// El @ apunta a la carpeta src/
+import logoCesfam from '@/assets/logo-cesfam.png' 
+
 import { 
   HomeIcon, 
   DocumentTextIcon, 
@@ -67,7 +69,6 @@ import {
   CalendarIcon,
   UserGroupIcon,
   PencilSquareIcon,
-
   ClipboardDocumentCheckIcon
 } from '@heroicons/vue/24/outline'
 </script>
@@ -75,6 +76,7 @@ import {
 <style>
 .contenedor-navegacion { height: 100%; }
 
+/* OJO: El logo está oculto en pantallas pequeñas por este display: none */
 .logo-desktop { display: none; }
 .logo-desktop img { width: 100%; max-width: 150px; margin-bottom: 2rem; }
 
@@ -101,6 +103,7 @@ import {
 .icono-menu { width: 28px; height: 28px; }
 .texto-menu { display: block; }
 
+/* El logo solo se muestra si la pantalla es mayor a 768px */
 @media (min-width: 768px) {
   .logo-desktop { display: block; }
 

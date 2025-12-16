@@ -9,15 +9,19 @@ class Evento extends Model
 {
     use HasFactory;
 
+    protected $table = 'eventos';
+
+    // AQUÍ ESTÁ LA CLAVE: Debemos listar TODOS los campos de todas las migraciones
     protected $fillable = [
-        'titulo', 
-        'descripcion', 
-        'fecha_inicio', 
-        'fecha_fin', 
-        'lugar', 
-        'creado_por_id',
-        'comunicado_id',
-        'categoria'
+        'titulo',
+        'descripcion',
+        'fecha_inicio',
+        'fecha_fin',
+        'lugar',
+        'categoria',      // Viene de la migración del día 15
+        'comunicado_id',  // Viene de la otra migración del día 15
+        'user_id',
+        'creado_por_id',         // Es probable que quieras saber quién creó el evento (opcional)
     ];
 
     protected $casts = [
@@ -25,8 +29,9 @@ class Evento extends Model
         'fecha_fin' => 'datetime',
     ];
 
+    // Opcional: Si quieres acceder al comunicado desde el evento
     public function comunicado()
     {
-        return $this->belongsTo(\App\Models\Comunicado::class);
+        return $this->belongsTo(Comunicado::class);
     }
 }
