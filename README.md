@@ -1,6 +1,6 @@
 Intranet Administrativa CESFAM Santa Rosa
 
-Repositorio del Proyecto de Título / Proyecto Integrado
+Proyecto Integrado
 
 Este proyecto es una aplicación web destinada a centralizar y automatizar los procesos administrativos internos del Centro de Salud Familiar (CESFAM) Santa Rosa, enfocándose en la gestión documental y el flujo de solicitudes de permisos y vacaciones.
 Caracteristicas Principales
@@ -42,7 +42,7 @@ Guia de Instalacion y Despliegue (Docker)
 Esta guía asume que tienes Docker y Docker Compose instalados en tu sistema.
 1. Clonar el Repositorio
 
-git clone [URL_DEL_REPOSITORIO] cd intranet-cesfam
+git clone https://github.com/MatiasAlfaro99/ConsultorioSantaRosa cd intranet-cesfam
 2. Configuracion de Variables de Entorno
 
 Copia el archivo de configuración de ejemplo y ajústalo (.env):
@@ -65,7 +65,7 @@ docker-compose up --build -d
 Una vez que los contenedores estén activos, accede al contenedor del Backend para inicializar la base de datos.
 Entrar al contenedor del Backend
 
-docker exec -it [nombre_del_contenedor_backend] bash
+docker exec -it consultorio-v2 bash
 Ejecutar migraciones y seeds
 
 php artisan migrate --seed
